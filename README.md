@@ -1,4 +1,4 @@
-<h3>install pygame</h3>
+<h2>Install pygame</h2>
 
 ```shell
 pip install -U pygame

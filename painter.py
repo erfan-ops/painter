@@ -1,10 +1,21 @@
 import pygame
 import sys
-import math
+from math import sin, cos, atan2, radians
 from typing import Self
 
 
 pygame.init()
+
+def rotate(x: float, y: float, angle: float) -> tuple[float, float]:
+    s, c = sin(angle), cos(angle)
+    return (x*c - y*s, x*s + y*c)
+
+def rotate_based_on_origin(pos: tuple[float, float], angle: float, origin: tuple[float, float]) -> tuple[float, float]:
+    s, c = sin(angle), cos(angle)
+    x, y = pos
+    x -= origin[0]
+    y -= origin[1]
+    return (x*c - y*s + origin[0], x*s + y*c + origin[1])
 
 
 class Circle(pygame.rect.Rect):
@@ -17,7 +28,7 @@ class Circle(pygame.rect.Rect):
         self.localCenterY: float = self.centery
         self.lastX = self.localCenterX
         self.lastY = self.localCenterY
-        self.RadPerSec = math.radians(RotPerSec)
+        self.RadPerSec = radians(RotPerSec)
         self.rot = self.RadPerSec
         self.lock = lock
     
@@ -28,11 +39,14 @@ class Circle(pygame.rect.Rect):
         dt_rot = self.rot * dt
         self.localCenterX -= self.lock.lastX - self.lock.localCenterX
         self.localCenterY -= self.lock.lastY - self.lock.localCenterY
+        
+        
         self.centerx0 = self.localCenterX - origin[0]
         self.centery0 = self.localCenterY - origin[1]
         
-        self.localCenterX = self.centerx0*math.cos(dt_rot) - self.centery0*math.sin(dt_rot) + origin[0]
-        self.localCenterY = self.centerx0*math.sin(dt_rot) + self.centery0*math.cos(dt_rot) + origin[1]
+        self.localCenterX, self.localCenterY = rotate(self.centerx0, self.centery0, dt_rot)
+        self.localCenterX += origin[0]
+        self.localCenterY += origin[1]
         
         self.center = (self.localCenterX, self.localCenterY)
     
@@ -43,32 +57,38 @@ class Circle(pygame.rect.Rect):
         self.center0: tuple[float, float] = (self.centerx0, self.centery0)
 
 
-WIDTH, HEIGHT = 1600, 900
+WIDTH, HEIGHT = 900, 900
 HW, HH = WIDTH//2, HEIGHT//2
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 TARGET_FPS = 720
 
-bg_color = "#151515"
+bg_color = "#151615"
 WHITE = "#dedede"
+
+canvas = pygame.surface.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+# canvas.set_alpha(0)
+
+RECT_SIZE = 4
+DRECT_SIZE = RECT_SIZE * 2
 
 
 csize = 20
 root = Circle((WIDTH - csize)//2, (HEIGHT - csize)//2, csize, csize, 0, None)
 
 c2: Circle = Circle((WIDTH - csize)//2,
-                    (HEIGHT - csize)//2 - 200,
+                    (HEIGHT - csize)//2 - 180,
                     csize,
                     csize,
-                    90,
+                    -45,
                     root)
 c2.set_origin((HW, HH))
 
 c3: Circle = Circle((WIDTH - csize)//2,
-                    (HEIGHT - csize)//2 - 300,
+                    (HEIGHT - csize)//2 - 280,
                     csize,
                     csize,
-                    -45,
+                    225,
                     c2)
 
 c4: Circle = Circle((WIDTH - csize)//2,
@@ -82,15 +102,15 @@ c5: Circle = Circle((WIDTH - csize)//2,
                     (HEIGHT - csize)//2 - 400,
                     csize,
                     csize,
-                    720,
+                    360,
                     c4)
 
 circles: list[Circle] = [root, c2, c3, c4, c5]
 circles_len = len(circles)
-points: list[tuple[int, int]] = []
+# points: list[tuple[int, int]] = []
 
-# screen.fill(bg_color)
-# pygame.display.flip()
+screen.fill(bg_color)
+pygame.display.flip()
 is_running = True
 while is_running:
     for event in pygame.event.get():
@@ -114,20 +134,27 @@ while is_running:
         pygame.draw.ellipse(screen, WHITE, circle)
         
         if i > 0:
-            pygame.draw.line(screen, WHITE, circle.center, circles[i-1].center, 5)
+            pygame.draw.line(screen, WHITE, circle.center, circles[i-1].center, 4)
             circle.move((x, y), dt)
             x += circle.centerx0
             y += circle.centery0
     
-    points.append(circles[-1].center)
+    # pygame.draw.line(canvas, WHITE, circles[-1].center, circles[-2].center, 2)
+    # rect = pygame.rect.Rect(*circles[-1].topleft, 4, 4)
+    # dx = circles[-1].x - circles[-2].x
+    # dy = circles[-1].y - circles[-2].y
+    # ang = atan2(dy, dx)
+    # points = [rotate_based_on_origin(rect.topleft, ang, rect.center),
+    #           rotate_based_on_origin(rect.topright, ang, rect.center),
+    #           rotate_based_on_origin(rect.bottomright, ang, rect.center),
+    #           rotate_based_on_origin(rect.bottomleft, ang, rect.center)]
+    # # # print(points)
+    # pygame.draw.polygon(canvas, WHITE, points, 0)
+    pygame.draw.rect(canvas, WHITE, (circles[-1].x + DRECT_SIZE, circles[-1].y + DRECT_SIZE, RECT_SIZE, RECT_SIZE))
     
-    for point in points:
-        rect = (*point, 4, 4)
-        pygame.draw.rect(screen, WHITE, rect)
     
-    # rect3 = pygame.draw.line(screen, WHITE, circles[-1].center, circles[-2].center, 2)
+    screen.blit(canvas, (0, 0))
     
-    # pygame.display.update(rect3)
     pygame.display.flip()
     clock.tick(TARGET_FPS)
 
